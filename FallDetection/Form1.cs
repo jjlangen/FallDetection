@@ -76,13 +76,13 @@ namespace FallDetection
             else Application.Exit();
         }
 
-        private void DrawSkeletons()
+        private void DrawSkeletons(Graphics g)
         {
             foreach (Skeleton skeleton in this.skeletonData)
             {
                 if (skeleton.TrackingState == SkeletonTrackingState.Tracked)
                 {
-                    DrawTrackedSkeletonJoints(skeleton.Joints);
+                    DrawTrackedSkeletonJoints(skeleton.Joints, g);
                 }
                 else if (skeleton.TrackingState == SkeletonTrackingState.PositionOnly)
                 {
@@ -91,27 +91,27 @@ namespace FallDetection
             }
         }
 
-        private void DrawTrackedSkeletonJoints(JointCollection jointCollection)
+        private void DrawTrackedSkeletonJoints(JointCollection jointCollection, Graphics g)
         {
             // Render Head and Shoulders
-            DrawBone(jointCollection[JointType.Head], jointCollection[JointType.ShoulderCenter]);
-            DrawBone(jointCollection[JointType.ShoulderCenter], jointCollection[JointType.ShoulderLeft]);
-            DrawBone(jointCollection[JointType.ShoulderCenter], jointCollection[JointType.ShoulderRight]);
+            DrawBone(jointCollection[JointType.Head], jointCollection[JointType.ShoulderCenter], g);
+            DrawBone(jointCollection[JointType.ShoulderCenter], jointCollection[JointType.ShoulderLeft], g);
+            DrawBone(jointCollection[JointType.ShoulderCenter], jointCollection[JointType.ShoulderRight], g);
 
             // Render Left Arm
-            DrawBone(jointCollection[JointType.ShoulderLeft], jointCollection[JointType.ElbowLeft]);
-            DrawBone(jointCollection[JointType.ElbowLeft], jointCollection[JointType.WristLeft]);
-            DrawBone(jointCollection[JointType.WristLeft], jointCollection[JointType.HandLeft]);
+            DrawBone(jointCollection[JointType.ShoulderLeft], jointCollection[JointType.ElbowLeft], g);
+            DrawBone(jointCollection[JointType.ElbowLeft], jointCollection[JointType.WristLeft], g);
+            DrawBone(jointCollection[JointType.WristLeft], jointCollection[JointType.HandLeft], g);
 
             // Render Right Arm
-            DrawBone(jointCollection[JointType.ShoulderRight], jointCollection[JointType.ElbowRight]);
-            DrawBone(jointCollection[JointType.ElbowRight], jointCollection[JointType.WristRight]);
-            DrawBone(jointCollection[JointType.WristRight], jointCollection[JointType.HandRight]);
+            DrawBone(jointCollection[JointType.ShoulderRight], jointCollection[JointType.ElbowRight], g);
+            DrawBone(jointCollection[JointType.ElbowRight], jointCollection[JointType.WristRight], g);
+            DrawBone(jointCollection[JointType.WristRight], jointCollection[JointType.HandRight], g);
 
             // Render other bones...
         }
 
-        private void DrawBone(Joint jointFrom, Joint jointTo)
+        private void DrawBone(Joint jointFrom, Joint jointTo, Graphics g)
         {
             if (jointFrom.TrackingState == JointTrackingState.NotTracked ||
             jointTo.TrackingState == JointTrackingState.NotTracked)
@@ -122,24 +122,31 @@ namespace FallDetection
             if (jointFrom.TrackingState == JointTrackingState.Inferred ||
             jointTo.TrackingState == JointTrackingState.Inferred)
             {
-                DrawNonTrackedBoneLine(jointFrom.Position, jointTo.Position);  // Draw thin lines if either one of the joints is inferred
+                DrawNonTrackedBoneLine(jointFrom.Position, jointTo.Position, g);  // Draw thin lines if either one of the joints is inferred
             }
 
             if (jointFrom.TrackingState == JointTrackingState.Tracked &&
             jointTo.TrackingState == JointTrackingState.Tracked)
             {
-                DrawTrackedBoneLine(jointFrom.Position, jointTo.Position);  // Draw bold lines if the joints are both tracked
+                DrawTrackedBoneLine(jointFrom.Position, jointTo.Position, g);  // Draw bold lines if the joints are both tracked
             }
-
-            Console.WriteLine(jointFrom.Position.X.ToString());
         }
 
-        private void DrawTrackedBoneLine(SkeletonPoint positionFrom, SkeletonPoint positionTo)
+        private void DrawTrackedBoneLine(SkeletonPoint positionFrom, SkeletonPoint positionTo, Graphics g)
         {
-            // Code goes here
+            int xi = (int)(positionFrom.X * (float)pictureBox.Width);
+            int yi = (int)(positionFrom.Y * (float)pictureBox.Height);
+            Point from = new Point(xi, yi);
+
+            int xj = (int)(positionTo.X * (float)pictureBox.Width);
+            int yj = (int)(positionTo.Y * (float)pictureBox.Height);
+            Point to = new Point(xj, yj);
+
+            g.DrawLine(Pens.Yellow, from, to); 
+
         }
 
-        private void DrawNonTrackedBoneLine(SkeletonPoint positionFrom, SkeletonPoint positionTo)
+        private void DrawNonTrackedBoneLine(SkeletonPoint positionFrom, SkeletonPoint positionTo, Graphics g)
         {
             // Code goes here
         }
