@@ -122,17 +122,29 @@ namespace FallDetection
             if (jointFrom.TrackingState == JointTrackingState.Inferred ||
             jointTo.TrackingState == JointTrackingState.Inferred)
             {
-                //DrawNonTrackedBoneLine(jointFrom.Position, jointTo.Position);  // Draw thin lines if either one of the joints is inferred
+                DrawNonTrackedBoneLine(jointFrom.Position, jointTo.Position);  // Draw thin lines if either one of the joints is inferred
             }
 
             if (jointFrom.TrackingState == JointTrackingState.Tracked &&
             jointTo.TrackingState == JointTrackingState.Tracked)
             {
-                //DrawTrackedBoneLine(jointFrom.Position, jointTo.Position);  // Draw bold lines if the joints are both tracked
+                DrawTrackedBoneLine(jointFrom.Position, jointTo.Position);  // Draw bold lines if the joints are both tracked
             }
+
+            Console.WriteLine(jointFrom.Position.X.ToString());
         }
 
-        private void sensor_SkeletonFrameReady(object sender, SkeletonFrameReadyEventArgs e)
+        private void DrawTrackedBoneLine(SkeletonPoint positionFrom, SkeletonPoint positionTo)
+        {
+            // Code goes here
+        }
+
+        private void DrawNonTrackedBoneLine(SkeletonPoint positionFrom, SkeletonPoint positionTo)
+        {
+            // Code goes here
+        }
+
+         private void sensor_SkeletonFrameReady(object sender, SkeletonFrameReadyEventArgs e)
         {
             using (SkeletonFrame skeletonFrame = e.OpenSkeletonFrame()) // Open the Skeleton frame
             {
