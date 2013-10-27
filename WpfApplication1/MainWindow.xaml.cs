@@ -38,13 +38,16 @@ namespace WpfApplication1
         private WriteableBitmap colorBitmap, depthBitmap;
         private DepthImagePixel[] depthPixels;
         private byte[] colorPixels, colorDepthPixels;
+
+        private float lastPosY = 0.0f;
+        private Queue<float>[] dPosY = new Queue<float>[8];
         #endregion
 
         public MainWindow()
         {
             InitializeComponent();
         }
-
+        
         // Draws indicators to show which edges are clipping skeleton data
         private static void RenderClippedEdges(Skeleton skeleton, DrawingContext drawingContext)
         {
@@ -91,6 +94,10 @@ namespace WpfApplication1
                 //return;
             }
 
+            // Initialise array of queues
+            for (int i = 0; i < dPosY.Length; i++)
+                dPosY[i] = new Queue<float>();
+
             // Create the drawing group we'll use for drawing
             drawingGroup = new DrawingGroup();
 
@@ -111,7 +118,7 @@ namespace WpfApplication1
             }
 
             if (null != this.sensor)
-            {   
+            {
                 // Turn on the color stream to receive colored frames
                 sensor.ColorStream.Enable(ColorImageFormat.RgbResolution640x480Fps30);
                 sensor.ColorFrameReady += SensorColorFrameReady;
@@ -126,7 +133,7 @@ namespace WpfApplication1
 
                 // Start the sensor
                 try
-                { sensor.Start(); }
+                { sensor.Start(); sensor.ElevationAngle = 8; }
                 catch (IOException)
                 { sensor = null; }
             }
@@ -235,7 +242,12 @@ namespace WpfApplication1
                 {
                     skeletons = new Skeleton[skeletonFrame.SkeletonArrayLength];
                     skeletonFrame.CopySkeletonDataTo(skeletons);
-                    detectFall(skeletonFrame, skeletons[0].Joints[JointType.Head]);
+                    foreach (Skeleton skeleton in skeletons)
+                    {
+
+                        if (skeleton.TrackingState == SkeletonTrackingState.Tracked)
+                            detectFall(skeletonFrame, skeleton);
+                    }
                 }
             }
 
@@ -350,26 +362,71 @@ namespace WpfApplication1
         }
 
         // Makes a floor plane and uses the position of the head to calculate the length of a vector normal to the plane
-        private void detectFall(SkeletonFrame sframe, Joint joint)
+        private void detectFall(SkeletonFrame sframe, Skeleton skeleton)
         {
+            int fallCounter = 0;
+            int j = 0;
+
+            Joint[] joints = new Joint[] {
+                skeleton.Joints[JointType.Head],
+                skeleton.Joints[JointType.ShoulderCenter],
+                skeleton.Joints[JointType.ShoulderLeft],
+                skeleton.Joints[JointType.ShoulderRight],
+                skeleton.Joints[JointType.Spine],
+                skeleton.Joints[JointType.HipCenter],
+                skeleton.Joints[JointType.HipLeft],
+                skeleton.Joints[JointType.HipRight]
+            };
+
             float A = sframe.FloorClipPlane.Item1;
             float B = sframe.FloorClipPlane.Item2;
             float C = sframe.FloorClipPlane.Item3;
             float D = sframe.FloorClipPlane.Item4;
+
+            for (int i = 0; i < joints.Length; i++)
+            {
+                if (joints[i].TrackingState == JointTrackingState.Tracked)
+                {
+                    fallCounter += checkJoint(i, A, B, C, D, joints[i]);
+                    j++;
+                }
+            }
+
+            if (fallCounter >= (j*100/75))
+            {
+                label.Content = "Fall Detected";
+                label.Foreground = Brushes.Red;
+            }
+        }
+
+        private int checkJoint(int n, float A, float B, float C, float D, Joint joint)
+        {
             float x = joint.Position.X;
             float y = joint.Position.Y;
             float z = joint.Position.Z;
+
+            if (dPosY[n].Count == 10)
+                dPosY[n].Dequeue();
+
+            dPosY[n].Enqueue(lastPosY - y);
+            lastPosY = y;
+
+            float dPosYTotal = 0.0f;
+            foreach(float dPosYStep in dPosY[n])
+                dPosYTotal += dPosYStep;
+
+            float dPosYAvg = dPosYTotal / dPosY[n].Count;            
 
             float num = A * x + B * y + C * z + D;
             float denum = A * A + B * B + C * C;
 
             float distance = num / (float)Math.Sqrt(denum);
-            if (distance <= 1.00)
+            if (distance <= 0.50 && dPosYAvg > 0.05)
             {
-                label.Content = "Fall Detected";
-                label.Foreground = Brushes.Red;
+                return 1;
             }
 
+            return 0;
         }
     }
 }
