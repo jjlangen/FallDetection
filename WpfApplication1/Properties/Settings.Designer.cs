@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace FallDetection.Properties
+namespace WpfApplication1.Properties
 {
 
 
