@@ -378,16 +378,11 @@ namespace WpfApplication1
                 skeleton.Joints[JointType.HipRight]
             };
 
-            float A = sframe.FloorClipPlane.Item1;
-            float B = sframe.FloorClipPlane.Item2;
-            float C = sframe.FloorClipPlane.Item3;
-            float D = sframe.FloorClipPlane.Item4;
-
             for (int i = 0; i < joints.Length; i++)
             {
                 if (joints[i].TrackingState == JointTrackingState.Tracked)
                 {
-                    fallCounter += checkJoint(i, A, B, C, D, joints[i]);
+                    fallCounter += checkJoint(sframe, joints[i], i);
                     j++;
                 }
             }
@@ -399,8 +394,13 @@ namespace WpfApplication1
             }
         }
 
-        private int checkJoint(int n, float A, float B, float C, float D, Joint joint)
+        private int checkJoint(SkeletonFrame sframe, Joint joint, int n)
         {
+            float A = sframe.FloorClipPlane.Item1;
+            float B = sframe.FloorClipPlane.Item2;
+            float C = sframe.FloorClipPlane.Item3;
+            float D = sframe.FloorClipPlane.Item4;
+
             float x = joint.Position.X;
             float y = joint.Position.Y;
             float z = joint.Position.Z;
