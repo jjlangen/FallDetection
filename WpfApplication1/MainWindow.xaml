@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="MainWindow" Height="600" Width="1300"  Loaded="WindowLoaded" Closing="WindowClosing">
     <Grid Name="layoutGrid" Background="AliceBlue">
+        <Slider Name="elevationSlider" HorizontalAlignment="Center" VerticalAlignment="Top" Width="1200" Height="50" Margin="0 10 0 0" Minimum="0" Maximum="10" Visibility="Hidden"/>
         <Grid Name="VideoGrid1" ClipToBounds="True" HorizontalAlignment="Left" Margin="5 0 0 0">
             <Image Name="ColorImage" Width="640" Height="480"/>
             <Image Name="SkeletalImage" Width="640" Height="480"/>
@@ -16,5 +17,6 @@
             <CheckBox Name="checkBoxSkelOnly" Content="Skeleton Only" Checked="checkBoxSkelOnlyChanged" Unchecked="checkBoxSkelOnlyChanged"/> 
             <Label Name="label" Content="No fall detected" Padding="50 0 50 0" FontSize="16" FontFamily="Stencil" Foreground="Lime"/>
         </StatusBar>
+        
     </Grid>
 </Window>

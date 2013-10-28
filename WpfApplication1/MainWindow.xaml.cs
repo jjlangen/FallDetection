@@ -15,6 +15,8 @@ using System.Windows.Shapes;
 
 using Microsoft.Kinect;
 using System.IO;
+using System.Speech.Synthesis;
+using System.Speech.Recognition;
 
 namespace WpfApplication1
 {
@@ -41,6 +43,11 @@ namespace WpfApplication1
 
         private float lastPosY = 0.0f;
         private Queue<float>[] dPosY = new Queue<float>[8];
+
+        private SpeechSynthesizer synthesizer = new SpeechSynthesizer();
+        private SpeechRecognitionEngine recognitionEngine = new SpeechRecognitionEngine();
+        string[] yesno;
+        private int fallen = 0;
         #endregion
 
         public MainWindow()
@@ -92,7 +99,7 @@ namespace WpfApplication1
                 MessageBox.Show("No Kinects device detected", "Fall Detection");
                 Application.Current.Shutdown();
                 //return;
-            }
+            }            
 
             // Initialise array of queues
             for (int i = 0; i < dPosY.Length; i++)
@@ -133,9 +140,10 @@ namespace WpfApplication1
 
                 // Start the sensor
                 try
-                { sensor.Start(); sensor.ElevationAngle = 8; }
+                { sensor.Start(); sensor.ElevationAngle = 1; }
                 catch (IOException)
                 { sensor = null; }
+
             }
         }
 
@@ -389,8 +397,14 @@ namespace WpfApplication1
 
             if (fallCounter >= (j*100/75))
             {
+                fallen++;
                 label.Content = "Fall Detected";
                 label.Foreground = Brushes.Red;
+                if (fallen == 1)
+                {
+                    setupSpeechRecognition();
+                    synthesizer.Speak("Do you need assistance?");
+                }
             }
         }
 
@@ -421,12 +435,49 @@ namespace WpfApplication1
             float denum = A * A + B * B + C * C;
 
             float distance = num / (float)Math.Sqrt(denum);
-            if (distance <= 0.50 && dPosYAvg > 0.05)
+            if (distance <= 1.00 && dPosYAvg > 0.50)
             {
                 return 1;
             }
 
             return 0;
+        }
+
+        private void setupSpeechRecognition()
+        {
+            yesno = new string[2] { "Yes", "No" };
+            foreach (string s in yesno)
+            {
+                recognitionEngine.RequestRecognizerUpdate();
+                recognitionEngine.LoadGrammar(new Grammar(new GrammarBuilder(s)));
+            }
+            recognitionEngine.SpeechRecognized += recognitionEngine_SpeechRecognized;
+            recognitionEngine.SpeechRecognitionRejected += recognitionEngine_SpeechRecognitionRejected;
+            recognitionEngine.SetInputToDefaultAudioDevice();
+            recognitionEngine.RecognizeAsync(RecognizeMode.Single);  
+        }
+
+        void recognitionEngine_SpeechRecognitionRejected(object sender, SpeechRecognitionRejectedEventArgs e)
+        {
+            string word = yesno[0] + " or " + yesno[1];
+            foreach (RecognizedPhrase a in e.Result.Alternates)
+            { word = a.Text; }
+            synthesizer.Speak("I did not understand that. Did you mean "+ word);
+        }
+
+        void recognitionEngine_SpeechRecognized(object sender, SpeechRecognizedEventArgs e)
+        {
+            string word = e.Result.Text;
+            if (e.Result.Text == "No")
+            {
+                fallen = 0;
+                label.Content = "No Fall Detected";
+                label.Foreground = Brushes.Lime;
+            }
+            else if (e.Result.Text == "Yes")
+            {
+
+            }
         }
     }
 }
