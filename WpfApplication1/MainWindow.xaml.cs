@@ -17,6 +17,10 @@ using Microsoft.Kinect;
 using System.IO;
 using System.Speech.Synthesis;
 using System.Speech.Recognition;
+using System.Timers;
+using System.Net.Mail;
+using System.Net;
+using System.Net.Mime;
 
 namespace WpfApplication1
 {
@@ -41,13 +45,15 @@ namespace WpfApplication1
         private DepthImagePixel[] depthPixels;
         private byte[] colorPixels, colorDepthPixels;
 
-        private float lastPosY = 0.0f;
-        private Queue<float>[] dPosY = new Queue<float>[8];
+        private float[] lastPosY = new float[4];
+        private Queue<float>[] dPosY = new Queue<float>[4];
 
         private SpeechSynthesizer synthesizer = new SpeechSynthesizer();
         private SpeechRecognitionEngine recognitionEngine = new SpeechRecognitionEngine();
         string[] yesno;
         private int fallen = 0;
+
+        private Timer timer = new Timer(5000);
         #endregion
 
         public MainWindow()
@@ -138,9 +144,12 @@ namespace WpfApplication1
                 configureDepthStream();
                 sensor.DepthFrameReady += SensorDepthFrameReady;
 
+                // Event handler for timer that counts 5 seconds
+                timer.Elapsed += timer_Elapsed;
+
                 // Start the sensor
                 try
-                { sensor.Start(); sensor.ElevationAngle = 1; }
+                { sensor.Start(); sensor.ElevationAngle = 4; }
                 catch (IOException)
                 { sensor = null; }
 
@@ -373,17 +382,13 @@ namespace WpfApplication1
         private void detectFall(SkeletonFrame sframe, Skeleton skeleton)
         {
             int fallCounter = 0;
-            int j = 0;
+            int trackedJoints = 0;
 
             Joint[] joints = new Joint[] {
                 skeleton.Joints[JointType.Head],
                 skeleton.Joints[JointType.ShoulderCenter],
                 skeleton.Joints[JointType.ShoulderLeft],
-                skeleton.Joints[JointType.ShoulderRight],
-                skeleton.Joints[JointType.Spine],
-                skeleton.Joints[JointType.HipCenter],
-                skeleton.Joints[JointType.HipLeft],
-                skeleton.Joints[JointType.HipRight]
+                skeleton.Joints[JointType.ShoulderRight]
             };
 
             for (int i = 0; i < joints.Length; i++)
@@ -391,21 +396,31 @@ namespace WpfApplication1
                 if (joints[i].TrackingState == JointTrackingState.Tracked)
                 {
                     fallCounter += checkJoint(sframe, joints[i], i);
-                    j++;
+                    trackedJoints++;
                 }
             }
 
-            if (fallCounter >= (j*100/75))
+            if (trackedJoints > 0 && fallCounter == trackedJoints)
             {
                 fallen++;
                 label.Content = "Fall Detected";
                 label.Foreground = Brushes.Red;
                 if (fallen == 1)
                 {
+                    saveImage();
                     setupSpeechRecognition();
                     synthesizer.Speak("Do you need assistance?");
+                    timer.AutoReset = false;
+                    timer.Start();                    
                 }
             }
+        }
+
+        void timer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            recognitionEngine.Dispose();
+            synthesizer.Speak("The assistance is underway!");
+            MessageBox.Show("The assistance is underway!", "Don't panic");            
         }
 
         private int checkJoint(SkeletonFrame sframe, Joint joint, int n)
@@ -422,8 +437,8 @@ namespace WpfApplication1
             if (dPosY[n].Count == 10)
                 dPosY[n].Dequeue();
 
-            dPosY[n].Enqueue(lastPosY - y);
-            lastPosY = y;
+            dPosY[n].Enqueue(lastPosY[n] - y);
+            lastPosY[n] = y;
 
             float dPosYTotal = 0.0f;
             foreach(float dPosYStep in dPosY[n])
@@ -435,7 +450,7 @@ namespace WpfApplication1
             float denum = A * A + B * B + C * C;
 
             float distance = num / (float)Math.Sqrt(denum);
-            if (distance <= 1.00 && dPosYAvg > 0.50)
+            if (distance <= 0.80 && dPosYAvg > 0.05)
             {
                 return 1;
             }
@@ -445,15 +460,15 @@ namespace WpfApplication1
 
         private void setupSpeechRecognition()
         {
-            yesno = new string[2] { "Yes", "No" };
+            recognitionEngine.SetInputToDefaultAudioDevice();
+            yesno = new string[2] { "Yes", "No" };            
             foreach (string s in yesno)
             {
                 recognitionEngine.RequestRecognizerUpdate();
                 recognitionEngine.LoadGrammar(new Grammar(new GrammarBuilder(s)));
             }
             recognitionEngine.SpeechRecognized += recognitionEngine_SpeechRecognized;
-            recognitionEngine.SpeechRecognitionRejected += recognitionEngine_SpeechRecognitionRejected;
-            recognitionEngine.SetInputToDefaultAudioDevice();
+            recognitionEngine.SpeechRecognitionRejected += recognitionEngine_SpeechRecognitionRejected;            
             recognitionEngine.RecognizeAsync(RecognizeMode.Single);  
         }
 
@@ -473,11 +488,68 @@ namespace WpfApplication1
                 fallen = 0;
                 label.Content = "No Fall Detected";
                 label.Foreground = Brushes.Lime;
+                timer.Stop();
             }
             else if (e.Result.Text == "Yes")
             {
-
+                createMessage();
             }
+        }
+
+        private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            //sensor.ElevationAngle = (int)e.NewValue;
+        }
+
+        private void saveImage()
+        {
+            string path = "../Snapshots/Fall.jpg";
+            FileStream fs = new FileStream(path, FileMode.Create);
+            RenderTargetBitmap bmp = new RenderTargetBitmap((int)ColorImage.ActualWidth,
+                (int)ColorImage.ActualHeight, 1 / 96, 1 / 96, PixelFormats.Pbgra32);
+            bmp.Render(ColorImage);
+            BitmapEncoder encoder = new JpegBitmapEncoder();//new TiffBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bmp));
+            encoder.Save(fs);
+            fs.Close();
+        }
+
+        public void createMessage()
+        {
+            /*var client = new SmtpClient("smtp.gmail.com", 587)
+            {
+                Credentials = new NetworkCredential("itassignmentmail@gmail.com ", "InteractionTech"),
+                EnableSsl = true
+            };
+            client.Send("itassignmentmail@gmail.com ", "paktwis17@gmail.com", "test", "testbody");
+             * */
+
+            string file = "../Snapshots/Fall.jpg";
+
+            MailMessage message = new MailMessage("itassignmentmail@gmail.com", "paktwis17@gmail.com, jensvanlangen@gmail.com, youri@zwanepol.nl", "Someone is hurt!!", "Assistance is needed, see the attachment");
+            Attachment data = new Attachment(file, MediaTypeNames.Application.Octet);
+            ContentDisposition disposition = data.ContentDisposition;
+            disposition.CreationDate = File.GetCreationTime(file);
+            disposition.ModificationDate = File.GetLastWriteTime(file);
+            disposition.ReadDate = File.GetLastAccessTime(file);
+
+            message.Attachments.Add(data);
+
+            var client = new SmtpClient("smtp.gmail.com", 587)
+            {
+                Credentials = new NetworkCredential("itassignmentmail@gmail.com ", "InteractionTech"),
+                EnableSsl = true
+            };
+
+            try
+            { client.Send(message); }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Exception caught in CreateMessageWithAttachment(): {0}",
+                      ex.ToString());
+            }
+
+            data.Dispose();
         }
     }
 }

@@ -3,12 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="MainWindow" Height="600" Width="1300"  Loaded="WindowLoaded" Closing="WindowClosing">
     <Grid Name="layoutGrid" Background="AliceBlue">
-        <Slider Name="elevationSlider" HorizontalAlignment="Center" VerticalAlignment="Top" Width="1200" Height="50" Margin="0 10 0 0" Minimum="0" Maximum="10" Visibility="Hidden"/>
+        <Slider Name="elevationSlider" HorizontalAlignment="Center" VerticalAlignment="Top" Width="1200" Height="50" Margin="0 10 0 0" Minimum="1" Maximum="26" Value="4" IsEnabled="True" Interval="1" ValueChanged="Slider_ValueChanged" />
         <Grid Name="VideoGrid1" ClipToBounds="True" HorizontalAlignment="Left" Margin="5 0 0 0">
             <Image Name="ColorImage" Width="640" Height="480"/>
             <Image Name="SkeletalImage" Width="640" Height="480"/>
 
-            <Canvas Background="Transparent"/>
+            <Canvas Name="canvas" Background="Transparent"/>
         </Grid>
         <Grid Name="VideoGrid2" ClipToBounds="True" HorizontalAlignment="Right" Margin="0 0 5 0">
             <Image Name="DepthImage" Width="640" Height="480"/>
