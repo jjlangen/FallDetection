@@ -1,17 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 using Microsoft.Kinect;
 using System.IO;
@@ -149,7 +140,7 @@ namespace WpfApplication1
 
                 // Start the sensor
                 try
-                { sensor.Start(); sensor.ElevationAngle = 4; }
+                { sensor.Start(); sensor.ElevationAngle = -1; }
                 catch (IOException)
                 { sensor = null; }
 
@@ -384,6 +375,7 @@ namespace WpfApplication1
             int fallCounter = 0;
             int trackedJoints = 0;
 
+            // Array of joints we want to take into account
             Joint[] joints = new Joint[] {
                 skeleton.Joints[JointType.Head],
                 skeleton.Joints[JointType.ShoulderCenter],
@@ -391,6 +383,7 @@ namespace WpfApplication1
                 skeleton.Joints[JointType.ShoulderRight]
             };
 
+            // Check if a joint is in a 'falling motion'
             for (int i = 0; i < joints.Length; i++)
             {
                 if (joints[i].TrackingState == JointTrackingState.Tracked)
@@ -400,6 +393,7 @@ namespace WpfApplication1
                 }
             }
 
+            // Start emergency procedure when we detect a falling person
             if (trackedJoints > 0 && fallCounter == trackedJoints)
             {
                 fallen++;
@@ -434,22 +428,29 @@ namespace WpfApplication1
             float y = joint.Position.Y;
             float z = joint.Position.Z;
 
+            // Dequeue when the queue has size 10
             if (dPosY[n].Count == 10)
                 dPosY[n].Dequeue();
 
+            // Add new value to queue (last position of Y minus the current position of Y)
             dPosY[n].Enqueue(lastPosY[n] - y);
             lastPosY[n] = y;
 
+            // Add last 10 (or the amount we have in our queue) together
             float dPosYTotal = 0.0f;
             foreach(float dPosYStep in dPosY[n])
                 dPosYTotal += dPosYStep;
 
+            // Divide to get the average acceleration of joint
             float dPosYAvg = dPosYTotal / dPosY[n].Count;            
 
+            // Calculate distance of joint with respect to the floorplane
             float num = A * x + B * y + C * z + D;
             float denum = A * A + B * B + C * C;
 
             float distance = num / (float)Math.Sqrt(denum);
+
+            // If joint is below a certain altitude and the acceleration is faster than a certain threshold the tracked joint is in a 'falling motion'
             if (distance <= 0.80 && dPosYAvg > 0.05)
             {
                 return 1;
@@ -458,6 +459,7 @@ namespace WpfApplication1
             return 0;
         }
 
+        // Speech recognition
         private void setupSpeechRecognition()
         {
             recognitionEngine.SetInputToDefaultAudioDevice();
@@ -501,6 +503,7 @@ namespace WpfApplication1
             //sensor.ElevationAngle = (int)e.NewValue;
         }
 
+        // Save snapshot of falling person
         private void saveImage()
         {
             string path = "../Snapshots/Fall.jpg";
@@ -514,16 +517,9 @@ namespace WpfApplication1
             fs.Close();
         }
 
+        // Send an email to emergency address containing snapshot so the receiver can judge the situation
         public void createMessage()
         {
-            /*var client = new SmtpClient("smtp.gmail.com", 587)
-            {
-                Credentials = new NetworkCredential("itassignmentmail@gmail.com ", "InteractionTech"),
-                EnableSsl = true
-            };
-            client.Send("itassignmentmail@gmail.com ", "paktwis17@gmail.com", "test", "testbody");
-             * */
-
             string file = "../Snapshots/Fall.jpg";
 
             MailMessage message = new MailMessage("itassignmentmail@gmail.com", "paktwis17@gmail.com, jensvanlangen@gmail.com, youri@zwanepol.nl", "Someone is hurt!!", "Assistance is needed, see the attachment");
