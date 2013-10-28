@@ -140,7 +140,11 @@ namespace WpfApplication1
 
                 // Start the sensor
                 try
-                { sensor.Start(); sensor.ElevationAngle = -1; }
+                { 
+                    sensor.Start(); 
+                    // Set angle of Kinect
+                    sensor.ElevationAngle = 0; 
+                }
                 catch (IOException)
                 { sensor = null; }
 
@@ -414,7 +418,8 @@ namespace WpfApplication1
         {
             recognitionEngine.Dispose();
             synthesizer.Speak("The assistance is underway!");
-            MessageBox.Show("The assistance is underway!", "Don't panic");            
+            createMessage();
+            MessageBox.Show("The assistance is underway!", "Don't panic");       
         }
 
         private int checkJoint(SkeletonFrame sframe, Joint joint, int n)
@@ -496,11 +501,6 @@ namespace WpfApplication1
             {
                 createMessage();
             }
-        }
-
-        private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            //sensor.ElevationAngle = (int)e.NewValue;
         }
 
         // Save snapshot of falling person
